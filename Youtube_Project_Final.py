@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
+#YouTube Data Harvesting and Warehousing using SQL, MongoDB and Streamlit
 
 import streamlit as st
 import pymongo
