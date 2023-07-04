@@ -84,7 +84,7 @@ def get_video_details(youtube, video_ids):
         for video in response['items']:
             stats_to_keep = {
                 'snippet': ['channelTitle', 'title', 'description', 'tags', 'publishedAt'],
-                'statistics': ['viewCount', 'likeCount', 'favoriteCount', 'commentCount'],
+                'statistics': ['viewCount', 'likeCount'],
                 'contentDetails': ['duration', 'definition', 'caption']
             }
             video_info = {'video_id': video['id']}
@@ -149,7 +149,7 @@ def store_data_in_mongodb(youtube, channel_ids):
                 'video_id': video['video_id'],
                 'title': video['title'],
                 'likes': video['likeCount'],
-                'comments': comments_df[comments_df['video_id'] == video['video_id']]['comments'].tolist()
+                'comments': comments_df[comments_df['video_id'] == video['video_id']]['comments'].values.tolist()
             }
             data['videos'].append(video_entry)
 
@@ -257,8 +257,7 @@ def query_videos_with_highest_likes():
     display_query_results(search_results, ['Video Title', 'Channel Name'])
 
 def query_likes_and_dislikes_per_video():
-    sqlite_cursor.execute('SELECT videos.title, videos.likes'
-                          'FROM videos')
+    sqlite_cursor.execute('SELECT videos.title, videos.likes ' 'FROM videos')
     search_results = sqlite_cursor.fetchall()
     display_query_results(search_results, ['Video Title', 'Likes'])
 
