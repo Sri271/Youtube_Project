@@ -178,28 +178,6 @@ def migrate_data_to_sql(selected_channel):
     sqlite_conn.commit()
     st.sidebar.success('Data migrated to SQL successfully!')
 
-
-def search_data_by_channel(channel_query):
-    sqlite_cursor.execute('SELECT * FROM channels WHERE channel_name LIKE ?', ('%' + channel_query + '%',))
-    search_results = sqlite_cursor.fetchall()
-    if search_results:
-        df = pd.DataFrame(search_results, columns=['channel_id', 'channel_name', 'subscribers', 'video_count'])
-        st.subheader('Search Results:')
-        st.dataframe(df)
-    else:
-        st.sidebar.info('No matching channels found.')
-
-
-def search_data_by_video(video_query):
-    sqlite_cursor.execute('SELECT * FROM videos WHERE title LIKE ?', ('%' + video_query + '%',))
-    search_results = sqlite_cursor.fetchall()
-    if search_results:
-        df = pd.DataFrame(search_results, columns=['video_id', 'channel_id', 'title', 'likes'])
-        st.subheader('Search Results:')
-        st.dataframe(df)
-    else:
-        st.sidebar.info('No matching videos found.')
-
 def join_tables():
     sqlite_cursor.execute('SELECT channels.channel_name, videos.title, videos.likes '
                           'FROM channels JOIN videos ON channels.channel_id = videos.channel_id')
