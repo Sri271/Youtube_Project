@@ -1,5 +1,6 @@
 #YouTube Data Harvesting and Warehousing using SQL, MongoDB and Streamlit
 
+
 import streamlit as st
 import pymongo
 import sqlite3
@@ -13,7 +14,7 @@ mongodb_collection = mongodb_db['videos']
 sqlite_conn = sqlite3.connect('youtube_data.db')
 sqlite_cursor = sqlite_conn.cursor()
 
-youtube_api_key = 'youtube_api_key'
+youtube_api_key = 'AIzaSyAOW2sM6yeMKe1_eWKlfGEXv8A1kQrp37s'
 youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
 
 
@@ -114,7 +115,8 @@ def get_comments_in_videos(youtube, video_ids):
 
             comments_in_video = [comment['snippet']['topLevelComment']['snippet']['textOriginal']
                                  for comment in response['items'][0:10]]
-            comments_in_video_info = {'video_id': video_id, 'comments': comments_in_video}
+            comment_count = len(comments_in_video)
+            comments_in_video_info = {'video_id': video_id, 'comments': comments_in_video, 'comment_count': comment_count}
 
             all_comments.append(comments_in_video_info)
 
@@ -160,9 +162,8 @@ def store_data_in_mongodb(youtube, channel_ids):
 
 def migrate_data_to_sql(selected_channel):
     sqlite_cursor.execute('CREATE TABLE IF NOT EXISTS channels (channel_id TEXT, channel_name TEXT, subscribers INTEGER, video_count INTEGER)')
-    sqlite_cursor.execute('CREATE TABLE IF NOT EXISTS videos (video_id TEXT, channel_id TEXT, title TEXT, likes INTEGER)')
-    sqlite_cursor.execute('DELETE FROM channels')
-    sqlite_cursor.execute('DELETE FROM videos')
+    sqlite_cursor.execute('CREATE TABLE IF NOT EXISTS videos (video_id TEXT, channel_id TEXT, title TEXT, likes INTEGER, view_count INTEGER, publishedAt TEXT, duration INTEGER, comment_count INTEGER)')
+    sqlite_cursor.execute('CREATE TABLE IF NOT EXISTS comments (comment_id TEXT, video_id TEXT, content TEXT)')
 
     selected_channel_data = mongodb_collection.find_one({'channel_name': selected_channel})
     channel_id = selected_channel_data['channel_id']
@@ -172,11 +173,18 @@ def migrate_data_to_sql(selected_channel):
                            selected_channel_data['subscribers'], selected_channel_data['video_count']))
 
     for video in selected_channel_data['videos']:
-        sqlite_cursor.execute('INSERT INTO videos VALUES (?, ?, ?, ?)',
-                              (video['video_id'], channel_id, video['title'], video['likes']))
+        view_count = video.get('viewCount')  
+        publishedAt = video.get('publishedAt')
+        duration = video.get('duration')
+        comment_count = video.get('comments')
+        
+        sqlite_cursor.execute('INSERT INTO videos VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                          (video['video_id'], channel_id, video['title'], video['likes'], video['view_count'], video['publishedAt'], video['duration'], video['comment_count']))
 
+    
     sqlite_conn.commit()
     st.sidebar.success('Data migrated to SQL successfully!')
+
 
 def join_tables():
     sqlite_cursor.execute('SELECT channels.channel_name, videos.title, videos.likes '
@@ -209,12 +217,12 @@ def query_channels_with_most_videos():
                           'GROUP BY channel_name '
                           'ORDER BY video_count DESC')
     search_results = sqlite_cursor.fetchall()
-    display_query_results(search_results, ['Channel Name', 'Video Count'])
+    display_query_results(search_results, ['Channel Name', 'video_count'])
 
 def query_top_10_viewed_videos():
     sqlite_cursor.execute('SELECT videos.title, channels.channel_name '
                           'FROM videos JOIN channels ON videos.channel_id = channels.channel_id '
-                          'ORDER BY videos.viewCount DESC '
+                          'ORDER BY videos.view_count DESC '
                           'LIMIT 10')
     search_results = sqlite_cursor.fetchall()
     display_query_results(search_results, ['Video Title', 'Channel Name'])
@@ -240,11 +248,11 @@ def query_likes_and_dislikes_per_video():
     display_query_results(search_results, ['Video Title', 'Likes'])
 
 def query_total_views_per_channel():
-    sqlite_cursor.execute('SELECT channels.channel_name, SUM(videos.viewCount) AS total_views '
+    sqlite_cursor.execute('SELECT channels.channel_name, SUM(videos.view_count) AS total_views '
                           'FROM channels JOIN videos ON channels.channel_id = videos.channel_id '
                           'GROUP BY channels.channel_id, channels.channel_name')
     search_results = sqlite_cursor.fetchall()
-    display_query_results(search_results, ['Channel Name', 'Total Views'])
+    display_query_results(search_results, ['Channel Name', 'total_views'])
 
 def query_channels_published_in_2022():
     sqlite_cursor.execute('SELECT DISTINCT channel_name '
@@ -258,12 +266,12 @@ def query_average_duration_per_channel():
                           'FROM channels JOIN videos ON channels.channel_id = videos.channel_id '
                           'GROUP BY channels.channel_id, channels.channel_name')
     search_results = sqlite_cursor.fetchall()
-    display_query_results(search_results, ['Channel Name', 'Average Duration'])
+    display_query_results(search_results, ['Channel Name', 'average_duration'])
 
 def query_videos_with_highest_comments():
     sqlite_cursor.execute('SELECT videos.title, channels.channel_name '
                           'FROM videos JOIN channels ON videos.channel_id = channels.channel_id '
-                          'ORDER BY videos.commentCount DESC '
+                          'ORDER BY videos.comment_count DESC '
                           'LIMIT 10')
     search_results = sqlite_cursor.fetchall()
     display_query_results(search_results, ['Video Title', 'Channel Name'])
@@ -302,6 +310,10 @@ def main():
                     'video_id': video['video_id'],
                     'title': video['title'],
                     'likes': video['likeCount'],
+                    'view_count': video['viewCount'],
+                    'publishedAt': video['publishedAt'],
+                    'duration': video.get('duration'),
+                    'comment_count': video.get('comment_count'),
                     'comments': comments_df[comments_df['video_id'] == video['video_id']]['comments'].tolist()
                 }
                 data['videos'].append(video_entry)
@@ -323,7 +335,7 @@ def main():
                                               'Top 10 Most Viewed Videos',
                                               'Comments per Video',
                                               'Videos with Highest Likes',
-                                              'Likes and Dislikes per Video',
+                                              'Likes per Video',
                                               'Total Views per Channel',
                                               'Channels Published in 2022',
                                               'Average Duration per Channel',
@@ -349,7 +361,7 @@ def main():
             if st.sidebar.button('Search'):
                 query_videos_with_highest_likes()
 
-        elif search_option == 'Likes and Dislikes per Video':
+        elif search_option == 'Likes per Video':
             if st.sidebar.button('Search'):
                 query_likes_and_dislikes_per_video()
 
@@ -377,4 +389,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
