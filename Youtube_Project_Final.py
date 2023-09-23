@@ -15,7 +15,7 @@ sqlite_conn = sqlite3.connect('youtube_data.db')
 sqlite_cursor = sqlite_conn.cursor()
 
 youtube_api_key = 'youtube_api_key'
-youtube_service = build('youtube', 'v3', developerKey=AIzaSyAOW2sM6yeMKe1_eWKlfGEXv8A1kQrp37s)
+youtube_service = build('youtube', 'v3', developerKey='AIzaSyAOW2sM6yeMKe1_eWKlfGEXv8A1kQrp37s')
 
 
 def get_channel_stats(youtube, channel_ids):
