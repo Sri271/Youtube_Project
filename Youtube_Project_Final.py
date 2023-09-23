@@ -279,6 +279,7 @@ def query_videos_with_highest_comments():
 def main():
     st.title('YouTube Data Harvesting and Data Warehousing')
     st.sidebar.title('Options')
+    st.write( f'<h6 style="color:rgb(0,  102, 204, 255);">App Created by Sriram</h6>', unsafe_allow_html=True ) 
 
     option = st.sidebar.selectbox('Select an option', ('Retrieve and Store Data in MongoDB', 'Migrate Data to SQL',
                                                        'Search Data', 'Join Tables'))
